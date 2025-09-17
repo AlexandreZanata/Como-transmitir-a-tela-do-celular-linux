@@ -50,6 +50,7 @@ echo "Dispositivo: ${DEV_W}x${DEV_H} (ratio: ${DEV_RATIO})"
 echo "Usando crop: $CROP_PARAM"
 
 exec scrcpy \
+    --always-on-top
   --audio-codec=opus \
   --window-title="POCO X6 Pro (Áudio Interno)" \
   $CROP_PARAM \
