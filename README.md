@@ -285,3 +285,215 @@ A principal configuração que você pode querer alterar é a rotação da tela.
   * Altere o valor de acordo com suas necessidades:
       * `SCRCPY_ROT="0"` para o modo paisagem (celular deitado).
       * `SCRCPY_ROT="90"` para o modo retrato (celular em pé).
+
+
+
+# Corrigindo o mapeamento de teclas para TFT Mobile
+
+Vou ajudar você a ajustar o script para que o mapeamento de teclas funcione corretamente com o TFT Mobile. O problema provavelmente está nas coordenadas ou na forma como o mapeamento está sendo aplicado.
+
+## Script corrigido com mapeamento de teclas
+
+```bash
+cat > ~/bin/scrcpy_final.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# --- CONFIGURAÇÕES ---
+SCRCPY_ROT="0" # Rotação inicial (0 para retrato)
+KEYMAP_FILE="$HOME/.config/scrcpy/scrcpy-keymap.yml"
+
+# --- EXECUÇÃO AUTOMÁTICA ---
+echo "Iniciando scrcpy com áudio (método final)..."
+
+# Verificar se o arquivo de mapeamento existe
+if [ -f "$KEYMAP_FILE" ]; then
+    echo "Usando mapeamento de teclas personalizado: $KEYMAP_FILE"
+    KEYMAP_OPTION="--key-map=$KEYMAP_FILE"
+else
+    echo "Arquivo de mapeamento não encontrado: $KEYMAP_FILE"
+    echo "Continuando sem mapeamento personalizado."
+    KEYMAP_OPTION=""
+fi
+
+# Obter resolução do monitor
+MON_RES=$(xrandr | awk '/\*/{print $1; exit}')
+MON_W=$(echo $MON_RES | cut -d'x' -f1)
+MON_H=$(echo $MON_RES | cut -d'x' -f2)
+MON_RATIO=$(echo "$MON_W/$MON_H" | bc -l)
+
+# Obter resolução do dispositivo
+DEV_INFO=$(adb shell wm size)
+DEV_WH=$(echo "$DEV_INFO" | awk -F': ' '{print $2}')
+DEV_W=$(echo $DEV_WH | cut -d'x' -f1)
+DEV_H=$(echo $DEV_WH | cut -d'x' -f2)
+DEV_RATIO=$(echo "$DEV_W/$DEV_H" | bc -l)
+
+# Calcular crop baseado na proporção de aspecto
+if [ $(echo "$MON_RATIO > $DEV_RATIO" | bc -l) -eq 1 ]; then
+    # Monitor é mais largo - cortar topo e base
+    CROP_H=$DEV_H
+    CROP_W=$(echo "$DEV_H * $MON_RATIO" | bc)
+    X_OFF=$(( (DEV_W - CROP_W) / 2 ))
+    Y_OFF=0
+else
+    # Monitor é mais alto - cortar laterais
+    CROP_W=$DEV_W
+    CROP_H=$(echo "$DEV_W / $MON_RATIO" | bc)
+    X_OFF=0
+    Y_OFF=$(( (DEV_H - CROP_H) / 2 ))
+fi
+
+# Garantir valores inteiros e dentro dos limites do dispositivo
+CROP_W=${CROP_W%.*}
+CROP_H=${CROP_H%.*}
+CROP_W=$(( CROP_W > DEV_W ? DEV_W : CROP_W ))
+CROP_H=$(( CROP_H > DEV_H ? DEV_H : CROP_H ))
+X_OFF=$(( X_OFF < 0 ? 0 : X_OFF ))
+Y_OFF=$(( Y_OFF < 0 ? 0 : Y_OFF ))
+
+CROP_PARAM="--crop=${CROP_W}:${CROP_H}:${X_OFF}:${Y_OFF}"
+echo "Monitor: ${MON_W}x${MON_H} (ratio: ${MON_RATIO})"
+echo "Dispositivo: ${DEV_W}x${DEV_H} (ratio: ${DEV_RATIO})"
+echo "Usando crop: $CROP_PARAM"
+
+exec scrcpy \
+  --audio-codec=opus \
+  --window-title="POCO X6 Pro (Áudio Interno)" \
+  $CROP_PARAM \
+  --orientation="$SCRCPY_ROT" \
+  --fullscreen \
+  --always-on-top \
+  --shortcut-mod=lctrl \
+  --max-fps=120 \
+  --video-bit-rate=8M \
+  --render-driver=opengl \
+  --max-size=1920 \
+  --turn-screen-off \
+  --disable-screensaver \
+  --video-codec=h264 \
+  --keyboard=uhid \
+  $KEYMAP_OPTION
+EOF
+
+chmod +x ~/bin/scrcpy_final.sh
+```
+
+## Como descobrir as coordenadas corretas para o TFT Mobile
+
+Para que o mapeamento de teclas funcione, você precisa usar as coordenadas corretas para o TFT Mobile. Siga estes passos:
+
+1. **Habilite as opções de desenvolvedor** no seu celular
+2. **Ative a visualização de toques**:
+   ```bash
+   adb shell settings put system show_touches 1
+   ```
+
+3. **Use este script para descobrir coordenadas**:
+   ```bash
+   cat > ~/bin/find_coordinates.sh << 'EOF'
+   #!/bin/bash
+   echo "Toque na tela do dispositivo para descobrir as coordenadas..."
+   echo "Pressione Ctrl+C para parar"
+   adb shell getevent -l | grep --line-buffered -E "ABS_MT_POSITION_X|ABS_MT_POSITION_Y" | awk '
+   /ABS_MT_POSITION_X/ {x=strtonum("0x" $NF); printf "X: %d, ", x}
+   /ABS_MT_POSITION_Y/ {y=strtonum("0x" $NF); printf "Y: %d\n", y}
+   '
+   EOF
+   chmod +x ~/bin/find_coordinates.sh
+   ```
+
+4. **Execute o script e toque nas áreas do TFT**:
+   ```bash
+   ~/bin/find_coordinates.sh
+   ```
+
+## Exemplo de arquivo de mapeamento para TFT Mobile
+
+Com base nas coordenadas descobertas, atualize seu arquivo de mapeamento:
+
+```bash
+mkdir -p ~/.config/scrcpy
+cat > ~/.config/scrcpy/scrcpy-keymap.yml << 'EOF'
+# Mapeamento para TFT Mobile
+# Ajuste as coordenadas conforme necessário para seu dispositivo
+
+# Tecla F para refresh da loja (ajuste as coordenadas)
+KEY_F:
+  - command: tap 500 1800
+    press: true
+    release: true
+
+# Tecla R para comprar XP (ajuste as coordenadas)
+KEY_R:
+  - command: tap 900 1800
+    press: true
+    release: true
+
+# Tecla E para colocar unit no tabuleiro (ajuste as coordenadas)
+KEY_E:
+  - command: tap 300 1000
+    press: true
+    release: true
+
+# Teclas 1-8 para selecionar unidades (ajuste as coordenadas)
+KEY_1:
+  - command: tap 200 400
+    press: true
+    release: true
+
+KEY_2:
+  - command: tap 400 400
+    press: true
+    release: true
+
+KEY_3:
+  - command: tap 600 400
+    press: true
+    release: true
+
+KEY_4:
+  - command: tap 800 400
+    press: true
+    release: true
+
+KEY_5:
+  - command: tap 1000 400
+    press: true
+    release: true
+
+# Tecla Espaço para centro da tela (ajuste as coordenadas)
+KEY_SPACE:
+  - command: tap 540 960
+    press: true
+    release: true
+
+# Tecla Q para vender unidade (ajuste as coordenadas)
+KEY_Q:
+  - command: tap 100 1800
+    press: true
+    release: true
+EOF
+```
+
+## Dicas adicionais
+
+1. **Verifique a versão do scrcpy**:
+   ```bash
+   scrcpy --version
+   ```
+   Certifique-se de que está usando a versão 1.21 ou superior para suporte completo a mapeamento de teclas.
+
+2. **Teste o mapeamento**:
+   ```bash
+   scrcpy --key-map=~/.config/scrcpy/scrcpy-keymap.yml --no-audio
+   ```
+
+3. **Se ainda não funcionar**, tente usar o modo de depuração:
+   ```bash
+   scrcpy --key-map=~/.config/scrcpy/scrcpy-keymap.yml --log-level=debug
+   ```
+
+4. **Para dispositivos com resoluções diferentes**, você pode precisar ajustar as coordenadas proporcionalmente.
+
+Com essas correções, seu mapeamento de teclas deve funcionar corretamente com o TFT Mobile. Lembre-se de ajustar as coordenadas com base no que você descobrir usando o script de descoberta de coordenadas.
