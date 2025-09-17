@@ -1,0 +1,10 @@
+cat > ~/.local/share/applications/espelhar-celular-final.desktop << 'EOF'
+[Desktop Entry]
+Name=Espelhar Celular (Final)
+Comment=Inicia o espelhamento do celular com todas as configurações
+Exec=/home/zanata/bin/scrcpy_final.sh
+Terminal=true
+Type=Application
+Icon=phone
+Categories=Utility;System;
+EOF
