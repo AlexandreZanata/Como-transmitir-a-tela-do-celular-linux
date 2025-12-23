@@ -2,6 +2,25 @@
 
 -----
 
+TIPOS DE COMANDOS
+
+| Atalho       | Função                         |
+| ------------ | ------------------------------ |
+| **Ctrl + F** | Tela cheia                     |
+| **Ctrl + O** | Liga/desliga tela do celular   |
+| **Ctrl + R** | Rotacionar                     |
+| **Ctrl + T** | Mostrar toques                 |
+| **Ctrl + H** | Home                           |
+| **Ctrl + B** | Voltar                         |
+| **Ctrl + M** | Menu                           |
+| **F11**      | Tela cheia (atalho do sistema) |
+
+
+
+
+
+
+
 # **English Version**
 
 # Advanced `scrcpy` Fullscreen Script
