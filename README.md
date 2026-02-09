@@ -1,3 +1,9 @@
+Link de Instalação do scrcpy ultima versão do repositorio oficial
+
+cd ~/Downloads
+wget https://github.com/Genymobile/scrcpy/releases/download/v3.3.4/scrcpy-linux-x86_64-v3.3.4.tar.gz
+
+
 -----
 
 -----
